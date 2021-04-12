@@ -1,7 +1,7 @@
 """
 
 Made by JhK_ in python console
-Console Version == 1.2
+Console Version == 1.3
 제작일자: 20.12.16:: PM 10:-- // 20.12.17:: PM 1:18
 
 """
@@ -52,7 +52,7 @@ class Command:
             pass
         else:
             for i in self.content['arg']:
-                print('[{}{}: {}]'.format('' if self.content['arg'][i]["isNecess"] == True else '*', i, sub.sortTypeFilter(self.content['arg'][i]['selectIn']), end=' '))
+                print('[{}{}: {}]'.format('' if self.content['arg'][i]["isNecess"] == True else '*', i, sub.sortTypeFilter(self.content['arg'][i]['selectIn'])), end=' ')
         print(end='\n\n')
         for i in self.content['arg']:
             print('{}{} - {}'.format('' if self.content['arg'][i]['isNecess'] == True else '*', i, self.content['arg'][i]['short']))
@@ -192,11 +192,13 @@ class Console:
                                 value.trig()
                         # 오류 출력
                         else:
-                            for i in [sub.checkLength, sub.checkSortType]:
-                                if i(value, self.content) == True:
-                                    pass
+                            for index, i in enumerate([sub.checkLength, sub.checkSortType]):
+                                if index == 0:
+                                    if i(value, self.content) != True:
+                                        print(i(value, self.content))
                                 else:
-                                    print(i(value, self.content))
+                                    if i(value, self.content)[0] != True:
+                                        print(i(value, self.content))
                             os.system('pause')
             elif self.content[0].lower() == 'help':
                 if len(self.content) == 1:
@@ -259,4 +261,3 @@ class Console:
             if self.stoploop == True:
                 self.stoploop = False
                 break
-
