@@ -1,7 +1,7 @@
 """
 
 Made by JhK_ in python console
-Console Version == 1.0
+Console Version == 1.1
 제작일자: 20.11.29:: 3:44 // 20.11.30:: 3:47
 
 """
@@ -13,13 +13,14 @@ import sys
 # 커맨드 생성
 class Command:
     # 변수 생성
-    def __init__(self, name, desc, trig, forceStopLoop=True):
+    def __init__(self, name, desc, trig, forceStopLoop=True, category=None):
         self.content = {}
         self.argu = {}
         self.name = name
         self.desc = desc
         self.trig = trig
         self.forceStop = forceStopLoop
+        self.cate = category
 
     # 함수 속성과 그 설명 생성
     def descArg(self, arg, desc, descDetail=None):
@@ -34,7 +35,8 @@ class Command:
         self.content = {
             'cmd': self.name,
             'desc': self.desc,
-            'arg': self.argu
+            'arg': self.argu,
+            'cate': self.cate
         }
     
     # 커맨드에 대한 도움말
@@ -130,11 +132,25 @@ class Console:
                                 value = i
                                 value.callHelp()
                     elif self.content[1].lower() == 'list':
+                        listcmdCateSort = []
+                        for i in self.listcmd:
+                            if i.cate != None:
+                                listcmdCateSort.append(i.cate)
+                        listcmdCateSort.sort()
+
                         print("=================================================")
                         print('<커맨드 목록>')
                         print('== <커맨드> ==\t== <설명> ==')
-                        for j in range(len(self.listcmd)):
-                            print('{}\t{}'.format(self.listcmd[j].name, self.listcmd[j].desc))
+                        for j in listcmdCateSort:
+                            print('- 카테고리 \'{}\''.format(j))
+                            for index in range(len(self.listcmd)):
+                                if self.listcmd[index].cate == j:
+                                    print('{}\t{}'.format(self.listcmd[index].name, self.listcmd[index].desc))
+                            print()    
+                        print("- 카테고리 없음")
+                        for indexNone in range(len(self.listcmd)):
+                            if self.listcmd[indexNone].cate == None:
+                                print('{}\t{}'.format(self.listcmd[indexNone].name, self.listcmd[indexNone].desc))
                         print("=================================================")
                         os.system('pause')
                     else:
