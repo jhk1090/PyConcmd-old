@@ -1,8 +1,8 @@
 """
 
 Made by JhK_ in python console
-Console Version == 1.1
-제작일자: 20.11.29:: 3:44 // 20.11.30:: 3:47
+Console Version == 1.2
+제작일자: 20.12.16:: PM 10:-- // 20.12.17:: PM 1:18
 
 """
 
@@ -23,10 +23,12 @@ class Command:
         self.cate = category
 
     # 함수 속성과 그 설명 생성
-    def descArg(self, arg, desc, descDetail=None):
+    def descArg(self, arg, desc, descDetail=None, isNecess=True, setSelect=None):
         descCollab = {
             'short': desc,
-            'detail': descDetail
+            'detail': descDetail,
+            'selectIn': setSelect,
+            'isNecess': isNecess
         }
         self.argu[arg] = descCollab 
     
@@ -50,10 +52,10 @@ class Command:
             pass
         else:
             for i in self.content['arg']:
-                print('[{}]'.format(i), end=' ')
+                print('[{}{}: {}]'.format('' if self.content['arg'][i]["isNecess"] == True else '*', i, sub.sortTypeFilter(self.content['arg'][i]['selectIn']), end=' '))
         print(end='\n\n')
         for i in self.content['arg']:
-            print('{} - {}'.format(i, self.content['arg'][i]['short']))
+            print('{}{} - {}'.format('' if self.content['arg'][i]['isNecess'] == True else '*', i, self.content['arg'][i]['short']))
             if self.content['arg'][i]['detail'] != None:
                 print('\n{}'.format(self.content['arg'][i]['detail']))
             print()
@@ -62,14 +64,89 @@ class Command:
 
 # 콘솔 보조
 class Sub:
+    # 트리거와 속성 합쳐 실행
     def cmdWithArg(self, func, args):
         func(*args)
 
+    # Input 위의 데코레이션(기본, 없음)
     def decoInputDefault(self):
         pass
-
+    
+    # Input 가이드라인
     def conInputGuide(self):
         return "\"help\"로 도움말 보기 >>> "
+
+    # 필수 항목만 카운트
+    def calcExceptNece(self, cmd):
+        stack = 0
+        for i in cmd.content['arg']:
+            if cmd.content['arg'][i]['isNecess'] == True:
+                stack += 1
+            else:
+                pass
+        return stack
+    
+    # 속성 값 바꾸기 & 오류 출력
+    def checkSortType(self, cmd, comparis):
+        WrongArgu = '속성 값이 잘못되었습니다. '
+        NoneType = type(None)
+        for index, i in enumerate(cmd.content['arg']):
+            indexArgu = cmd.content['arg'][i]
+            try:
+                # 리스트가 기본이면
+                if type(indexArgu['selectIn']) == list and (indexArgu['isNecess'] == True or i == comparis[index + 1]):
+                    if comparis[index + 1] in indexArgu['selectIn']:
+                        pass
+                    else:
+                        return WrongArgu + "({}중에 {}는 없습니다)".format(self.sortTypeFilter(indexArgu['selectIn']), comparis[index + 1])
+                
+                # 아무것이 기본이면
+                elif type(indexArgu['selectIn']) == NoneType and (indexArgu['isNecess'] == True or i == comparis[index + 1]):
+                    pass
+
+                # 위를 제외한 것이 기본이면
+                elif type(indexArgu['selectIn']) != NoneType and type(indexArgu['selectIn']) != list\
+                    and (indexArgu['isNecess'] == True or i == comparis[index + 1]):
+                    changeType = indexArgu['selectIn']
+                    try:
+                        comparis[index + 1] = changeType(comparis[index + 1])
+                    except:
+                        return WrongArgu + "({}로 변환될 수 없는 문자열입니다)".format(indexArgu['selectIn'].__name__)
+                    else:
+                        pass
+            except:
+                # 만약 필수 항목이 아니라면 // 현재 필수 항목은 한개만 지정 가능
+                pass
+        return [True, comparis[1:]]
+
+    # 필수 항목이 충족되었는지 확인 & 오류 출력
+    def checkLength(self, cmd, content):
+        if len(content[1:]) == self.calcExceptNece(cmd):
+            return True
+        else:
+            return '\'{}\' 커맨드는 총 {}개의 속성이 필수로 필요로 합니다. ({}개 입력됨.)'.format(content[0], self.calcExceptNece(cmd), len(content[1:]))
+
+    # arg에 넣을 수 있는 type 디스플레이 표시
+    def sortTypeFilter(self, source):
+        if source == None:
+            return 'any'
+        else:
+            if type(source) == list:
+                output = ''
+                output += '<'
+                for index, i in enumerate(source):
+                    if len(source) != index + 1:
+                        output += "{}|".format(i)
+                    else:
+                        output += "{}".format(i)
+                output += '>'
+                return output
+            else:
+                return source.__name__
+
+
+        
+
 sub = Sub()
 
 # 콘솔 총괄
@@ -98,17 +175,28 @@ class Console:
                     if self.content[0].lower() in i.name:
                         value = i   # ?
                         value.callCont()
-                        if len(self.content[1:]) == len(value.content['arg']):
+                        # 오류가 있는지 확인
+                        if sub.checkLength(value, self.content) == True and sub.checkSortType(value, self.content)[0] == True:
                             self.stoploop = value.forceStop
                             contentarg = []
-                            for i in self.content[1:]:
-                                contentarg.append(i)
+                            # 속성 추가
+                            for arg in sub.checkSortType(value, self.content)[1]:
+                                contentarg.append(arg)
+                            if len(self.content[1:]) != len(sub.checkSortType(value, self.content)[1]):
+                                for j in range(len(self.content[1:]) - len(sub.checkSortType(value, self.content)[1])):
+                                    contentarg.append(None)
+                            # 트리거 실행
                             if len(value.content['arg']) != 0:
                                 sub.cmdWithArg(value.trig, contentarg)
                             else:
                                 value.trig()
+                        # 오류 출력
                         else:
-                            print('\'{}\' 커맨드는 총 {}개의 속성이 필요합니다. ({}개 입력됨.)'.format(self.content[0], len(value.content['arg']), len(self.content[1:])))
+                            for i in [sub.checkLength, sub.checkSortType]:
+                                if i(value, self.content) == True:
+                                    pass
+                                else:
+                                    print(i(value, self.content))
                             os.system('pause')
             elif self.content[0].lower() == 'help':
                 if len(self.content) == 1:
@@ -171,6 +259,4 @@ class Console:
             if self.stoploop == True:
                 self.stoploop = False
                 break
-
-
 
