@@ -1,14 +1,15 @@
 """
 
 Made by JhK_ in python console
-Console Version == 1.4
-제작일자: 20.12.17:: PM 11:32 // 2020.12.23
+Console Version == 1.5
+제작일자: 20.12.24 -
 
 """
 
 
 import os
 import sys
+import asyncio
 
 # 커맨드 생성
 class Command:
@@ -67,14 +68,6 @@ class Sub:
     # 트리거와 속성 합쳐 실행
     def cmdWithArg(self, func, args):
         func(*args)
-
-    # Input 위의 데코레이션(기본, 없음)
-    def decoInputDefault(self):
-        pass
-    
-    # Input 가이드라인
-    def conInputGuide(self):
-        return "\"help\"로 도움말 보기 >>> "
 
     # 필수 항목만 카운트
     def calcNece(self, cmd):
@@ -187,24 +180,84 @@ class Sub:
                 output.append(i)
         return output
 
-        
-
 sub = Sub()
+
+class Default:
+    # Input 위의 데코레이션(기본, 없음)
+    def dec(self):
+        pass
+    
+    # Input 가이드라인
+    def wS(self):
+        return "\"help\"로 도움말 보기 >>> "
+    
+    # 시작했을때 최초
+    def onStart(self):
+        pass
+
+    # 끝났을때 최종
+    def onStop(self):
+        pass
+
+de = Default()
+
+
 
 # 콘솔 총괄
 class Console:
+    """
+    딕셔너리로 구성된 팩을 넣으세요.
+    기본 구조는 다음과 같습니다:
+    [* 필수]
+    {
+        "listcmd": *[설정한 커맨드 목록(list로 입력)],
+        "deco": 입력창 위 데코레이션(함수로 입력),
+        "withStr": 입력창 데코레이션(함수로 입력),
+        "version": 호환 버전(정수, 실수의 버전으로 입력),
+        "isProvideCmd": 기본 내장 커맨드를 제공할 지 선택(기본: True),
+        "trigger": {
+            "start": 시작시 최초 출력(함수로 입력),
+            "stop": 중지시 최종 출력(함수로 입력)
+        }
+    }
+    """
+        
     # 변수 생성
-    def __init__(self, listcmd, inputDeco=sub.decoInputDefault, conInputguide=sub.conInputGuide, version=1.4):
-        """
-        listcmd = list()
-        """
-
+    def __init__(self, pack):
         # 콘솔내 변수 선언
-        self.ver = 1.4
-        self.listcmd = listcmd
+        self.package = pack
+        self.ver = 1.5
+
+        # pack 검사
+        if 'deco' not in self.package:
+            self.package['deco'] = de.dec
+        if 'withStr' not in self.package:
+            self.package['withStr'] = de.wS
+        if 'version' not in self.package:
+            self.package['version'] = self.ver
+        if 'isProvideCmd' not in self.package:
+            self.package['isProvideCmd'] = True
+        if 'trigger' not in self.package:
+            self.package['trigger'] = {
+                'start': de.onStart,
+                'stop': de.onStop
+            }
+        else:
+            if 'start' not in self.package:
+                self.package['trigger']['start'] = de.onStart
+            if 'stop' not in self.package:
+                self.package['trigger']['stop'] = de.onStop
+        # 필수 변수
+        self.listcmd = self.package["listcmd"]
         self.stoploop = False
-        self.inDeco = inputDeco
-        self.inGuide = conInputguide
+        
+        # 선택적 변수
+        self.inDeco = self.package["deco"]
+        self.inGuide = self.package["withStr"]
+        self.version = self.package['version']
+        self.isPC = self.package['isProvideCmd']
+        self.onStart = self.package['trigger']['start']
+        self.onStop = self.package['trigger']['stop']
 
         # 사용자 바로잡이
         for i in self.listcmd:
@@ -212,8 +265,11 @@ class Console:
                 raise CannotIncludeError('Help 명령어는 기본 내장된 명령어입니다. 기본 내장 명령어를 중복사용 할 수 없습니다.')
             elif self.listcmd.count(i) > 1:
                 raise CannotIncludeError('한 명령어를 중복사용 할 수 없습니다.')
-        if version != self.ver:
-            raise VersionError('1.4 버전은 {}버전과 호환되지 않습니다.'.format(version))
+        if self.version != self.ver:
+            raise VersionError('1.5 버전은 {}버전과 호환되지 않습니다.'.format(self.ver))
+    
+    def on_start(self):
+        self.onStart()
     
     # 콘솔 입력
     def inputText(self):
@@ -256,62 +312,69 @@ class Console:
                                     if i(value, self.content)[0] != True:
                                         print(i(value, self.content))
                             os.system('pause')
-            elif self.content[0].lower() == 'help':
-                if len(self.content) == 1:
-                    listcmdCateSort = []
-                    for i in self.listcmd:
-                        if i.cate != None:
-                            listcmdCateSort.append(i.cate)
-                    listcmdCateSort.sort()
-                    print("=================================================")
-                    print("<사용 가능한 커맨드>")
-                    if len(self.listcmd) != 1:
-                        for j in range(len(self.listcmd) - 1):
-                            print('\'{}\','.format(self.listcmd[j].name), end=' ')
-                        print('\'{}\'.'.format(self.listcmd[len(self.listcmd) - 1].name))
-                    else:
-                        print('\'{}\'.'.format(self.listcmd[0].name))
-                    print(end='\n')
-                    print('<커맨드 목록>')
-                    print(' <커맨드> \t <설명> ')
-                    for j in listcmdCateSort:
-                        print('- 카테고리 \'{}\''.format(j))
-                        for index in range(len(self.listcmd)):
-                            if self.listcmd[index].cate == j:
-                                print(' {}\t {}'.format(self.listcmd[index].name, self.listcmd[index].desc))
-                        print()    
-                    print("- 카테고리 없음")
-                    for indexNone in range(len(self.listcmd)):
-                        if self.listcmd[indexNone].cate == None:
-                            print(' {}\t {}'.format(self.listcmd[indexNone].name, self.listcmd[indexNone].desc))
-                    print("=================================================")
-                    print("help [커맨드]로 커맨드별 도움말 불러오기.")
-                    print("=================================================")
-                    os.system('pause')
-                else:
-                    if self.content[1].lower() in [i.name for i in self.listcmd]:
+            elif self.isPC == True:
+                if self.content[0].lower() == 'help':
+                    if len(self.content) == 1:
+                        listcmdCateSort = []
                         for i in self.listcmd:
-                            if self.content[1].lower() in i.name:
-                                value = i
-                                value.callHelp()
-                    else:
-                        if self.content[1].lower() != "help":
-                            print("\'{}\'은/는 커맨드가 아닙니다. 명령 실행에 실패했습니다.".format(self.content[1].lower()))
+                            if i.cate != None:
+                                listcmdCateSort.append(i.cate)
+                        listcmdCateSort.sort()
+                        print("=================================================")
+                        print("<사용 가능한 커맨드>")
+                        if len(self.listcmd) != 1:
+                            for j in range(len(self.listcmd) - 1):
+                                print('\'{}\','.format(self.listcmd[j].name), end=' ')
+                            print('\'{}\'.'.format(self.listcmd[len(self.listcmd) - 1].name))
                         else:
-                            print("help로 명령어 도움말 출력하기")
+                            print('\'{}\'.'.format(self.listcmd[0].name))
+                        print(end='\n')
+                        print('<커맨드 목록>')
+                        print(' <커맨드> \t <설명> ')
+                        for j in listcmdCateSort:
+                            print('- 카테고리 \'{}\''.format(j))
+                            for index in range(len(self.listcmd)):
+                                if self.listcmd[index].cate == j:
+                                    print(' {}\t {}'.format(self.listcmd[index].name, self.listcmd[index].desc))
+                            print()    
+                        print("- 카테고리 없음")
+                        for indexNone in range(len(self.listcmd)):
+                            if self.listcmd[indexNone].cate == None:
+                                print(' {}\t {}'.format(self.listcmd[indexNone].name, self.listcmd[indexNone].desc))
+                        print("=================================================")
+                        print("help [커맨드]로 커맨드별 도움말 불러오기.")
+                        print("=================================================")
                         os.system('pause')
+                    else:
+                        if self.content[1].lower() in [i.name for i in self.listcmd]:
+                            for i in self.listcmd:
+                                if self.content[1].lower() in i.name:
+                                    value = i
+                                    value.callHelp()
+                        else:
+                            if self.content[1].lower() != "help":
+                                print("\'{}\'은/는 커맨드가 아닙니다. 명령 실행에 실패했습니다.".format(self.content[1].lower()))
+                            else:
+                                print("help로 명령어 도움말 출력하기")
+                            os.system('pause')
                 
             else:
                 print("\'{}\'은/는 커맨드가 아닙니다. 명령 실행에 실패했습니다.".format(self.content[0].lower()))
                 os.system('pause')
+
+    def on_stop(self):
+        self.onStop()
+    
     # 콘솔 총 실행라인
-    def processConsole(self):
+    def execute(self):
+        self.on_start()
         while True:
             self.inputText()
             self.inputCommand()
             if self.stoploop == True:
                 self.stoploop = False
                 break
+        self.on_stop()
 
 class CannotIncludeError(Exception):
     pass
