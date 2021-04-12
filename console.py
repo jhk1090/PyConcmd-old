@@ -1,8 +1,8 @@
 """
 
 Made by JhK_ in python console
-Console Version == 1.3
-제작일자: 20.12.16:: PM 10:-- // 20.12.17:: PM 1:18
+Console Version == 1.4
+제작일자: 20.12.17:: PM 11:32 // 2020.12.23
 
 """
 
@@ -77,54 +77,65 @@ class Sub:
         return "\"help\"로 도움말 보기 >>> "
 
     # 필수 항목만 카운트
-    def calcExceptNece(self, cmd):
-        stack = 0
+    def calcNece(self, cmd):
+        minstack = 0
         for i in cmd.content['arg']:
             if cmd.content['arg'][i]['isNecess'] == True:
-                stack += 1
+                minstack += 1
             else:
                 pass
-        return stack
-    
+        maxstack = 0
+        for i in cmd.content['arg']:
+            maxstack += 1
+        return [minstack, maxstack]
+
     # 속성 값 바꾸기 & 오류 출력
     def checkSortType(self, cmd, comparis):
+        # isNecessFalse = False
+        isNecessCount = 0   # 필수 항목 갯수
+        generatePack = []
+        indexArgu = None
         WrongArgu = '속성 값이 잘못되었습니다. '
         NoneType = type(None)
+
+        for loop in range(len(comparis[1:])):
+            isNecessCount += 1
         for index, i in enumerate(cmd.content['arg']):
-            indexArgu = cmd.content['arg'][i]
-            try:
+            if isNecessCount != 0:
+                isNecessCount -= 1
+                indexArgu = cmd.content['arg'][i]
+                attrName = list(cmd.content['arg'].items())[index][0]
+
                 # 리스트가 기본이면
-                if type(indexArgu['selectIn']) == list and (indexArgu['isNecess'] == True or i == comparis[index + 1]):
-                    if comparis[index + 1] in indexArgu['selectIn']:
-                        pass
-                    else:
-                        return WrongArgu + "({}중에 {}는 없습니다)".format(self.sortTypeFilter(indexArgu['selectIn']), comparis[index + 1])
+                if type(indexArgu['selectIn']) == list:
+                    if comparis[index + 1] not in indexArgu['selectIn']:
+                        return WrongArgu + "({} 속성에서, {}중에 {}는 없습니다)".format(attrName, self.sortTypeFilter(indexArgu['selectIn']), comparis[index + 1])
                 
                 # 아무것이 기본이면
-                elif type(indexArgu['selectIn']) == NoneType and (indexArgu['isNecess'] == True or i == comparis[index + 1]):
+                elif type(indexArgu['selectIn']) == NoneType:
                     pass
 
                 # 위를 제외한 것이 기본이면
-                elif type(indexArgu['selectIn']) != NoneType and type(indexArgu['selectIn']) != list\
-                    and (indexArgu['isNecess'] == True or i == comparis[index + 1]):
+                elif type(indexArgu['selectIn']) != NoneType and type(indexArgu['selectIn']) != list:
                     changeType = indexArgu['selectIn']
                     try:
                         comparis[index + 1] = changeType(comparis[index + 1])
                     except:
-                        return WrongArgu + "({}로 변환될 수 없는 문자열입니다)".format(indexArgu['selectIn'].__name__)
-                    else:
-                        pass
-            except:
-                # 만약 필수 항목이 아니라면 // 현재 필수 항목은 한개만 지정 가능
-                pass
+                        return WrongArgu + "({} 속성에서, {}는 {}로 변환될 수 없는 문자열입니다)".format(attrName, comparis[index + 1], indexArgu['selectIn'].__name__)
+
+            else:
+                break
         return [True, comparis[1:]]
 
     # 필수 항목이 충족되었는지 확인 & 오류 출력
     def checkLength(self, cmd, content):
-        if len(content[1:]) == self.calcExceptNece(cmd):
+        if self.calcNece(cmd)[0] <= len(content[1:]) <= self.calcNece(cmd)[1]:
             return True
         else:
-            return '\'{}\' 커맨드는 총 {}개의 속성이 필수로 필요로 합니다. ({}개 입력됨.)'.format(content[0], self.calcExceptNece(cmd), len(content[1:]))
+            if self.calcNece(cmd)[0] == self.calcNece(cmd)[1]:
+                return '\'{}\' 커맨드는 {}개의 속성이 필요로 합니다. ({}개 입력됨.)'.format(content[0], self.calcNece(cmd)[0], len(content[1:]))
+            else:
+                return '\'{}\' 커맨드는 최소 {}개, 최대 {}개의 속성이 필요로 합니다. ({}개 입력됨.)'.format(content[0], self.calcNece(cmd)[0], self.calcNece(cmd)[1], len(content[1:]))
 
     # arg에 넣을 수 있는 type 디스플레이 표시
     def sortTypeFilter(self, source):
@@ -143,7 +154,38 @@ class Sub:
                 return output
             else:
                 return source.__name__
+    
+    # 속성값 변환
+    def cleanArg(self, cmd, content):
+        basic = content.split()
+        output = [basic[0]]
+        for index, i in enumerate(basic[1:]):
+            # data = [i for i in cmd.contnt['arg']] (data[index])
+            indexArgu = cmd.content['arg']
+            if i.startswith('$') == True:
+                try:
+                    insideVar = i[1:i.find('=')]
+                    insideValue = i[i.find('=')+1:]
+                    insideIndex = list(indexArgu).index(insideVar) + 1
+                    if len(output) <= insideIndex:
+                        while len(output) <= insideIndex:
+                            appendIndex = len(output)
+                            try:
+                                if output[appendIndex] != None: # index 값이 존재하는 지 확인 여부
+                                    pass
+                                appendIndex += 1
 
+                            except Exception as errorValue:
+                                if type(errorValue) == IndexError:
+                                    output.append(None)
+                                    appendIndex += 1
+                    output[insideIndex] = insideValue
+                except:
+                    pass
+                    
+            else:
+                output.append(i)
+        return output
 
         
 
@@ -152,14 +194,26 @@ sub = Sub()
 # 콘솔 총괄
 class Console:
     # 변수 생성
-    def __init__(self, listcmd, inputDeco=sub.decoInputDefault, conInputguide=sub.conInputGuide):
+    def __init__(self, listcmd, inputDeco=sub.decoInputDefault, conInputguide=sub.conInputGuide, version=1.4):
         """
         listcmd = list()
         """
+
+        # 콘솔내 변수 선언
+        self.ver = 1.4
         self.listcmd = listcmd
         self.stoploop = False
         self.inDeco = inputDeco
         self.inGuide = conInputguide
+
+        # 사용자 바로잡이
+        for i in self.listcmd:
+            if i.name.lower() == "help":
+                raise CannotIncludeError('Help 명령어는 기본 내장된 명령어입니다. 기본 내장 명령어를 중복사용 할 수 없습니다.')
+            elif self.listcmd.count(i) > 1:
+                raise CannotIncludeError('한 명령어를 중복사용 할 수 없습니다.')
+        if version != self.ver:
+            raise VersionError('1.4 버전은 {}버전과 호환되지 않습니다.'.format(version))
     
     # 콘솔 입력
     def inputText(self):
@@ -175,6 +229,7 @@ class Console:
                     if self.content[0].lower() in i.name:
                         value = i   # ?
                         value.callCont()
+                        self.content = sub.cleanArg(value, self.contentcmd)
                         # 오류가 있는지 확인
                         if sub.checkLength(value, self.content) == True and sub.checkSortType(value, self.content)[0] == True:
                             self.stoploop = value.forceStop
@@ -196,12 +251,18 @@ class Console:
                                 if index == 0:
                                     if i(value, self.content) != True:
                                         print(i(value, self.content))
+                                        break
                                 else:
                                     if i(value, self.content)[0] != True:
                                         print(i(value, self.content))
                             os.system('pause')
             elif self.content[0].lower() == 'help':
                 if len(self.content) == 1:
+                    listcmdCateSort = []
+                    for i in self.listcmd:
+                        if i.cate != None:
+                            listcmdCateSort.append(i.cate)
+                    listcmdCateSort.sort()
                     print("=================================================")
                     print("<사용 가능한 커맨드>")
                     if len(self.listcmd) != 1:
@@ -211,8 +272,20 @@ class Console:
                     else:
                         print('\'{}\'.'.format(self.listcmd[0].name))
                     print(end='\n')
+                    print('<커맨드 목록>')
+                    print(' <커맨드> \t <설명> ')
+                    for j in listcmdCateSort:
+                        print('- 카테고리 \'{}\''.format(j))
+                        for index in range(len(self.listcmd)):
+                            if self.listcmd[index].cate == j:
+                                print(' {}\t {}'.format(self.listcmd[index].name, self.listcmd[index].desc))
+                        print()    
+                    print("- 카테고리 없음")
+                    for indexNone in range(len(self.listcmd)):
+                        if self.listcmd[indexNone].cate == None:
+                            print(' {}\t {}'.format(self.listcmd[indexNone].name, self.listcmd[indexNone].desc))
+                    print("=================================================")
                     print("help [커맨드]로 커맨드별 도움말 불러오기.")
-                    print("help list로 커맨드 모음 불러오기.")
                     print("=================================================")
                     os.system('pause')
                 else:
@@ -221,28 +294,6 @@ class Console:
                             if self.content[1].lower() in i.name:
                                 value = i
                                 value.callHelp()
-                    elif self.content[1].lower() == 'list':
-                        listcmdCateSort = []
-                        for i in self.listcmd:
-                            if i.cate != None:
-                                listcmdCateSort.append(i.cate)
-                        listcmdCateSort.sort()
-
-                        print("=================================================")
-                        print('<커맨드 목록>')
-                        print('== <커맨드> ==\t== <설명> ==')
-                        for j in listcmdCateSort:
-                            print('- 카테고리 \'{}\''.format(j))
-                            for index in range(len(self.listcmd)):
-                                if self.listcmd[index].cate == j:
-                                    print('{}\t{}'.format(self.listcmd[index].name, self.listcmd[index].desc))
-                            print()    
-                        print("- 카테고리 없음")
-                        for indexNone in range(len(self.listcmd)):
-                            if self.listcmd[indexNone].cate == None:
-                                print('{}\t{}'.format(self.listcmd[indexNone].name, self.listcmd[indexNone].desc))
-                        print("=================================================")
-                        os.system('pause')
                     else:
                         if self.content[1].lower() != "help":
                             print("\'{}\'은/는 커맨드가 아닙니다. 명령 실행에 실패했습니다.".format(self.content[1].lower()))
@@ -261,3 +312,8 @@ class Console:
             if self.stoploop == True:
                 self.stoploop = False
                 break
+
+class CannotIncludeError(Exception):
+    pass
+class VersionError(Exception):
+    pass
