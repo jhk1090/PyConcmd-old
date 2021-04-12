@@ -1,2 +1,2 @@
-# python-concmd-1
+# Description
 Be useful to make input console using python :)
